@@ -3,10 +3,9 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { z, regex } = require("zod");
 const { userModel } = require("../db");
+const { JWT_USER_PASSWORD } = require("../config");
 
 const userRouter = Router();
-
-const JWT_USER_PASSWORD = "user-potahtoo";
 
 userRouter.post("/signup", async function (req, res){
     const requiredBody = z.object({

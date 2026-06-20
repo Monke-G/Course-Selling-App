@@ -2,11 +2,11 @@ const { Router } = require("express");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { z, regex } = require("zod");
-const { adminModel } = require("../db");
+const { adminModel, courseModel } = require("../db");
+const { JWT_ADMIN_PASSWORD } = require("../config");
+const { adminMiddleware } = require("../middleware/admin");
 
 const adminRouter = Router();
-
-const JWT_ADMIN_PASSWORD = "admin-potahtoo";
 
 adminRouter.post("/signup", async function (req, res) {
   const requiredBody = z.object({
@@ -48,12 +48,11 @@ adminRouter.post("/signin", async function (req, res) {
   const admin = await adminModel.findOne({
     email,
   })
-  
-  if(!user) {
+  if (!admin) {
     res.status(403).json({
-      message: "User doesn't exist in our database"
-    })
-    return
+      message: "Admin doesn't exist in our database"
+    });
+    return;
   }
 
   const passwordMatch = await bcrypt.compare(password, admin.password);
@@ -75,28 +74,68 @@ adminRouter.post("/signin", async function (req, res) {
   }
 });
 
-adminRouter.post("/course", function (req, res) {
+adminRouter.post("/course", adminMiddleware, async function (req, res) {
+  const adminId = req.adminId;
+  const { title, description, imageUrl, price } = req.body;
+  
+  const course = await courseModel.create({
+    title,
+    description,
+    imageUrl,
+    price,
+    creatorId: adminId
+  });
+
   res.json({
-    message: "admin course creation endpoint",
+    message: "course created",
+    courseId: course._id
   });
 });
 
-adminRouter.put("/course", function (req, res) {
+adminRouter.put("/course", adminMiddleware, async function (req, res) {
+  const adminId = req.adminId;
+
+  const { title, description, imageUrl, price, courseId } = req.body;
+
+  const course = await courseModel.findOne({
+    _id: courseId,
+    creatorId: adminId,
+  });
+
+  if (!course) {
+    res.status(404).json({
+      message: "The course linked to the user doesn't exist in our database",
+    });
+    return;
+  }
+
+  await courseModel.updateOne({
+    _id: courseId,
+    creatorId: adminId
+  }, {
+    title,
+    description,
+    imageUrl,
+    price
+  })
+
   res.json({
-    message: "admin course edit endpoint",
+    message: "Course updated",
+    courseId: course._id
   });
 });
 
-adminRouter.get("/course/bulk", function (req, res) {
-  res.json({
-    message: "admin course getting endpoint",
-  });
-});
+adminRouter.get("/course/bulk", adminMiddleware, async function (req, res) {
+  const adminId = req.adminId;
 
-adminRouter.delete("/course", function (req, res) {
-  res.json({
-    message: "admin course deletion endpoint",
+  const courses = await courseModel.find({
+    creatorId: adminId
   });
+
+  res.json({
+    message: "Course presented",
+    courses
+  }); 
 });
 
 module.exports = {
