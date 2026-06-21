@@ -136,7 +136,7 @@ adminRouter.get("/course/bulk", adminMiddleware, async function (req, res) {
     message: "Course presented",
     courses
   }); 
-});
+}); 
 
 module.exports = {
     adminRouter: adminRouter
